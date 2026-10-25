@@ -2,7 +2,12 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LEVEL 30">
+<meta name="theme-color" content="#0d0b1a">
 <title>LEVEL 30</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +16,20 @@
   :root { --ui: 'Press Start 2P', ui-monospace, Menlo, monospace; --gold:#ffd23f; --red:#e8412c; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin:0; height:100%; background:#0d0b1a; color:#fff; font-family:var(--ui);
-    overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; }
-  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
-  #stage { position:relative; width:min(100vw, calc(100vh * 16 / 9)); aspect-ratio:16/9;
+    overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-text-size-adjust:100%; }
+  body { position:fixed; inset:0; }
+  /* #app = the whole game screen. On a phone held upright it is turned 90° so the game is always landscape
+     (works even with the iPhone rotation lock on); --W/--H are its width/height, --sl/--sr/--st/--sb its safe areas */
+  /* --vw/--vh = the really visible area (set by the script below: mobile browser toolbars are excluded) */
+  #app { position:fixed; left:0; top:0; width:var(--vw, 100vw); height:var(--vh, 100dvh); --W:var(--vw, 100vw); --H:var(--vh, 100dvh);
+    --sl:env(safe-area-inset-left); --sr:env(safe-area-inset-right); --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom); }
+  @media (orientation:portrait) and (pointer:coarse) {
+    #app { width:var(--vh, 100dvh); height:var(--vw, 100vw); --W:var(--vh, 100dvh); --H:var(--vw, 100vw); transform-origin:0 0; transform:translateX(var(--vw, 100vw)) rotate(90deg);
+      --sl:env(safe-area-inset-top); --sr:env(safe-area-inset-bottom); --st:env(safe-area-inset-right); --sb:env(safe-area-inset-left); }
+  }
+  #wrap { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  #stage { position:relative; aspect-ratio:16/9;
+    width:min(calc(var(--W) - var(--sl) - var(--sr)), calc((var(--H) - var(--st) - var(--sb)) * 16 / 9));
     container-type:size; overflow:hidden; box-shadow:0 0 0 2px #000, 0 20px 60px #0008; }
   canvas { width:100%; height:100%; display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
   [hidden] { display:none !important; }
@@ -96,19 +112,24 @@
     padding:1cqw 1.6cqw; cursor:pointer; opacity:.7; animation:pop .6s 1.8s both; }
 
   /* touch: virtual stick (left half) + action button */
-  #touch { position:fixed; inset:0; pointer-events:none; }
+  #touch { position:absolute; inset:0; pointer-events:none; }
   #stickZone { position:absolute; left:0; bottom:0; width:50%; height:60%; pointer-events:auto; touch-action:none; }
   #stick { position:absolute; width:26vmin; height:26vmin; max-width:150px; max-height:150px; border-radius:50%;
     border:3px solid #fff6; background:#ffffff14; transform:translate(-50%,-50%); pointer-events:none; }
   #knob { position:absolute; left:50%; top:50%; width:44%; height:44%; border-radius:50%; background:#ffffff55;
     transform:translate(-50%,-50%); }
-  #actBtn { position:absolute; right:6vmin; bottom:calc(8vmin + env(safe-area-inset-bottom)); width:18vmin; height:18vmin;
+  #actBtn { position:absolute; right:calc(6vmin + var(--sr)); bottom:calc(8vmin + var(--sb)); width:18vmin; height:18vmin;
     max-width:100px; max-height:100px; border-radius:50%; border:3px solid #fff8; background:#ffd23f44; color:#fff;
     font-family:var(--ui); font-size:5vmin; pointer-events:auto; touch-action:none; }
   #actBtn.on { background:#ffd23faa; }
+  #app:not(.ingame) #actBtn { display:none; }   /* title screen: tap «СТАРТ» */
   @media (pointer:fine) { #touch { display:none; } }
-  #rotate { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:0; right:0; text-align:center; font-size:11px; opacity:.7; pointer-events:none; }
-  @media (orientation:landscape), (pointer:fine) { #rotate { display:none; } }
+  /* bigger HUD text on phones */
+  @media (pointer:coarse) {
+    #quest { font-size:1.75cqw; padding:1.1cqw 1.5cqw; } #quest .h { font-size:1.35cqw; } #hudL { flex-basis:46cqw; }
+    #party { font-size:1.5cqw; } #hudC { font-size:1.7cqw; } #labels .lbl { font-size:1.5cqw; }
+    #mute { font-size:1.9cqw; padding:1cqw 1.2cqw; }
+  }
 
   @keyframes blink { 50% { opacity:.35; } }
   @keyframes bob { 50% { transform:translateY(-0.8cqw); } }
@@ -128,8 +149,18 @@
   #menu .locked { opacity:.35; padding:6px 10px; }
   #menu .mfoot { opacity:.5; font-size:.85em; margin-top:8px; }
 </style>
+<script>
+// visible area in CSS px — on phones 100vh includes the browser toolbars, innerHeight / visualViewport don't
+(function () {
+  const fit = () => { const v = window.visualViewport, w = Math.round(v ? v.width : innerWidth), h = Math.round(v ? v.height : innerHeight);
+    const r = document.documentElement.style; r.setProperty('--vw', w + 'px'); r.setProperty('--vh', h + 'px'); scrollTo(0, 0); };
+  fit(); addEventListener('resize', fit); addEventListener('orientationchange', () => setTimeout(fit, 250));
+  if (window.visualViewport) visualViewport.addEventListener('resize', fit);
+})();
+</script>
 </head>
 <body>
+<div id="app">
 <div id="wrap">
   <div id="stage">
     <canvas id="game" width="320" height="180"></canvas>
@@ -176,19 +207,19 @@
     </div>
   </div>
 </div>
-<div id="rotate">↻ поверни телефон — так удобнее</div>
 <div id="touch">
   <div id="stickZone"></div>
   <div id="stick" hidden><div id="knob"></div></div>
   <button id="actBtn">E</button>
 </div>
+</div>
 
 <script>window.L30_PUBLIC = true; window.L30_ED = "teaser";</script>
-<script src="story.js?v=mvo9eu7l"></script>
-<script src="registry.js?v=mvo9eu7l"></script>
-<script src="sprites.js?v=mvo9eu7l"></script>
-<script src="objects.js?v=mvo9eu7l"></script>
-<script src="chapters/ch1.js?v=mvo9eu7l"></script>
-<script src="game.js?v=mvo9eu7l"></script>
+<script src="story.js?v=mvo9yccp"></script>
+<script src="registry.js?v=mvo9yccp"></script>
+<script src="sprites.js?v=mvo9yccp"></script>
+<script src="objects.js?v=mvo9yccp"></script>
+<script src="chapters/ch1.js?v=mvo9yccp"></script>
+<script src="game.js?v=mvo9yccp"></script>
 </body>
 </html>

@@ -612,7 +612,7 @@ function jumpTo(chIdx, sceneId, qi) {
 }
 function startGame(chIdx = 0, sceneId) {
   if (state !== 'title') return;
-  audioInit(); state = 'play'; $('title').hidden = true; $('hud').hidden = false;
+  audioInit(); state = 'play'; $('title').hidden = true; $('hud').hidden = false; $('app').classList.add('ingame');
   jumpTo(chIdx, sceneId, params.has('done') ? Infinity : undefined);
 }
 // progress (for the menu: which chapters/scenes can be revisited)
@@ -625,6 +625,7 @@ function saveProgress() {
 $('startBtn').onclick = e => { e.stopPropagation(); startGame(); };
 $('tLogo').innerHTML = S.title.replace(/(\d+)/, '<b>$1</b>');
 $('tSub').textContent = S.subtitle + (ED ? ` · ${ED.title}` : '');
+if (matchMedia('(pointer:coarse)').matches) document.querySelector('#title .help').innerHTML = 'Джойстик — палец слева на экране · кнопка E — говорить<br>выполняй задания · ищи воспоминания «?»';
 // ---------------------------------------------------------------- audio
 let AC = null, muted = false, engine = null;
 function audioInit() { if (AC) return; try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
@@ -652,7 +653,7 @@ function engineSet(v) { if (engine) { engine.o.frequency.setTargetAtTime(55 + v 
 function engineOff() { if (engine) { engine.g.gain.setTargetAtTime(0, AC.currentTime, 0.2); const o = engine.o; setTimeout(() => o.stop(), 800); engine = null; } }
 // ---------------------------------------------------------------- menu: sound, revisit chapters/scenes (Esc)
 let paused = false;
-const menuEl = document.createElement('div'); menuEl.id = 'menu'; menuEl.hidden = true; document.body.append(menuEl);
+const menuEl = document.createElement('div'); menuEl.id = 'menu'; menuEl.hidden = true; ($('app') || document.body).append(menuEl);
 const DEBUG_ALL = params.has('ch') || params.has('all');
 function sceneOrder(ch) {   // scenes of a chapter with the objective index where each first matters
   const keep = CS; CS = { ch, i: CHAPTERS.indexOf(ch), qi: 0, scenes: {}, got: {}, outfits: {}, look: 'now' };
@@ -705,11 +706,15 @@ addEventListener('keydown', e => { const a = MAP[e.code]; if (!a) return; e.prev
 addEventListener('keyup', e => { const a = MAP[e.code]; if (a) keys[a] = false; });
 {
   const zone = $('stickZone'), st = $('stick'), knob = $('knob'), R = 44;
+  // phone held upright: #app is turned 90° (see index.html) → screen point → game-screen point
+  const ROT = matchMedia('(orientation:portrait) and (pointer:coarse)');
+  const loc = e => ROT.matches ? [e.clientY, (window.visualViewport ? visualViewport.width : innerWidth) - e.clientX] : [e.clientX, e.clientY];
   zone.addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); if (dlg) { pressed.act = true; return; }
-    stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; try { zone.setPointerCapture(e.pointerId); } catch (_) {}
-    st.hidden = false; st.style.left = e.clientX + 'px'; st.style.top = e.clientY + 'px'; knob.style.transform = 'translate(-50%,-50%)'; });
+    const [lx, ly] = loc(e);
+    stick.id = e.pointerId; stick.ox = lx; stick.oy = ly; try { zone.setPointerCapture(e.pointerId); } catch (_) {}
+    st.hidden = false; st.style.left = lx + 'px'; st.style.top = ly + 'px'; knob.style.transform = 'translate(-50%,-50%)'; });
   zone.addEventListener('pointermove', e => { if (e.pointerId !== stick.id) return;
-    let dx = e.clientX - stick.ox, dy = e.clientY - stick.oy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
+    const [lx, ly] = loc(e); let dx = lx - stick.ox, dy = ly - stick.oy; const d = Math.hypot(dx, dy); if (d > R) { dx *= R / d; dy *= R / d; }
     const wasUp = stick.y < -0.6; stick.x = dx / R; stick.y = dy / R; if (!wasUp && stick.y < -0.6) pressed.up = true;
     knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`; });
   const end = e => { if (e.pointerId !== stick.id) return; stick.id = null; stick.x = stick.y = 0; st.hidden = true; };
@@ -718,6 +723,8 @@ addEventListener('keyup', e => { const a = MAP[e.code]; if (a) keys[a] = false; 
   btn.addEventListener('pointerdown', e => { e.preventDefault(); audioInit(); press('act'); btn.classList.add('on'); });
   const off = e => { e.preventDefault(); keys.act = false; btn.classList.remove('on'); };
   btn.addEventListener('pointerup', off); btn.addEventListener('pointercancel', off); btn.addEventListener('pointerleave', off);
+  // tap on the dialog box = next line
+  $('dialog').addEventListener('pointerdown', e => { if (dlg) { e.preventDefault(); audioInit(); pressed.act = true; } });
 }
 $('stage').addEventListener('pointerdown', () => { audioInit(); if (dlg) pressed.act = true; });
 
@@ -747,6 +754,7 @@ function buildRaceArt() {
   for (let i = 0; i < 90; i++) { g.fillStyle = R2() < 0.5 ? '#55555f' : '#40404a'; g.fillRect(R2() * 64 | 0, R2() * 52 | 0, 1, 1); }
 }
 function startRace() {
+  $('app').classList.add('ingame');
   state = 'race'; buildRaceArt(); dlg = null; $('dialog').hidden = true; $('banner').classList.remove('show');
   Object.assign(R, { d: 0, v: 0, t: 0, phase: 'lights', goAt: 260 + Math.random() * 60 | 0, len: S.race.length || 4500, fin: 0, place: 0, wheelie: 0, qPassed: false });
   R.rivals = RIVALS.map(({ c, h, n, name, tag, q, top }, i) => ({ d: 40 + Math.floor(i / 2) * 40, lane: i % 2 ? 2 : 0, v: 0, top: q ? 4.4 : top + Math.random() * 0.15,
